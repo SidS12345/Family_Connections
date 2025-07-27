@@ -1,0 +1,99 @@
+.app-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-form {
+  background: #fff;
+  padding: 2.5rem 2.5rem 2rem 2.5rem;
+  border-radius: 18px;
+  box-shadow: 0 6px 32px rgba(58,123,213,0.10);
+  width: 370px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 2rem auto;
+}
+.auth-form h2 {
+  color: #3a7bd5;
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+}
+.auth-form form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.auth-form input {
+  width: 100%;
+  padding: 0.85rem;
+  margin-bottom: 1.2rem;
+  border: 1px solid #cfdef3;
+  border-radius: 8px;
+  font-size: 1.05rem;
+  background: #f7fbff;
+  transition: border 0.2s;
+}
+.auth-form input:focus {
+  border: 1.5px solid #3a7bd5;
+  outline: none;
+}
+.auth-form button {
+  background: linear-gradient(90deg, #3a7bd5 0%, #00d2ff 100%);
+  color: #fff;
+  border: none;
+  padding: 0.85rem 2rem;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 8px rgba(58,123,213,0.08);
+  transition: background 0.2s;
+}
+.auth-form button:hover {
+  background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
+}
+.form-message {
+  color: #3a7bd5;
+  font-size: 1.05rem;
+  margin-top: 1rem;
+  text-align: center;
+}
+.auth-form p {
+  font-size: 0.95rem;
+}
+.auth-form a {
+  color: #3a7bd5;
+  text-decoration: none;
+}
+.auth-form a:hover {
+  text-decoration: underline;
+}
+
+/* Green theme for login */
+.auth-form.login h2 {
+  color: #22a745;
+}
+.auth-form.login input:focus {
+  border: 1.5px solid #22a745;
+}
+.auth-form.login button {
+  background: linear-gradient(90deg, #22a745 0%, #a8e063 100%);
+}
+.auth-form.login button:hover {
+  background: linear-gradient(90deg, #a8e063 0%, #22a745 100%);
+}
+.form-message.login {
+  color: #22a745;
+}
+.auth-form.login a {
+  color: #22a745;
+}
+.auth-form.login a:hover {
+  text-decoration: underline;
+}
