@@ -15,3 +15,4 @@ class Relationship(db.Model):
     from_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     to_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     relationship_type = db.Column(db.String(50), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='pending')  # 'pending', 'approved', 'declined'

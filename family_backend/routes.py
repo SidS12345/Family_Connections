@@ -65,13 +65,14 @@ def connect():
     new_relationship = Relationship(
         from_user_id=data['from_user_id'],
         to_user_id=data['to_user_id'],
-        relationship_type=data['relationship_type']
+        relationship_type=data['relationship_type'],
+        status='pending'  # New requests are pending
     )
 
     db.session.add(new_relationship)
     db.session.commit()
 
-    return jsonify({"message": "Relationship added!"})
+    return jsonify({"message": "Connection request sent!"})
 
 @main_bp.route('/update_relationship/<int:relationship_id>', methods=["POST"])
 def update_relationship(relationship_id):
@@ -119,18 +120,27 @@ def get_relationships(user_id):
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    relationships = Relationship.query.filter_by(from_user_id=user_id).all()
+    # Only show approved relationships where the user is either the sender or recipient
+    relationships = Relationship.query.filter(
+        ((Relationship.from_user_id == user_id) | (Relationship.to_user_id == user_id)) &
+        (Relationship.status == 'approved')
+    ).all()
 
     results = []
     for rel in relationships:
-        relative = User.query.get(rel.to_user_id)
-        if relative:
+        if rel.from_user_id == user_id:
+            other_user = User.query.get(rel.to_user_id)
+            direction = 'to'
+        else:
+            other_user = User.query.get(rel.from_user_id)
+            direction = 'from'
+        if other_user:
             results.append({
-                "relative_id": relative.id,
-                "name": relative.name,
-                "relationship": rel.relationship_type
+                "relative_id": other_user.id,
+                "name": other_user.name,
+                "relationship": rel.relationship_type,
+                "direction": direction
             })
-
     return jsonify(results)
 
 @main_bp.route('/tree/<int:user_id>', methods=["GET"])
@@ -157,3 +167,47 @@ def delete_user(user_id):
     db.session.commit()
 
     return jsonify({"message": f"User with ID {user_id} deleted."})
+
+@main_bp.route('/relationship_requests/<int:user_id>', methods=["GET"])
+def get_relationship_requests(user_id):
+    # Requests where the user is the recipient and status is pending
+    requests = Relationship.query.filter_by(to_user_id=user_id, status='pending').all()
+    results = []
+    for rel in requests:
+        from_user = User.query.get(rel.from_user_id)
+        if from_user:
+            results.append({
+                "request_id": rel.id,
+                "from_user_id": from_user.id,
+                "from_name": from_user.name,
+                "relationship": rel.relationship_type
+            })
+    return jsonify(results)
+
+@main_bp.route('/respond_relationship/<int:request_id>', methods=["POST"])
+def respond_relationship(request_id):
+    rel = Relationship.query.get(request_id)
+    if not rel:
+        return jsonify({"error": "Request not found"}), 404
+    data = request.json
+    if "status" in data and data["status"] in ["approved", "declined"]:
+        rel.status = data["status"]
+        db.session.commit()
+        return jsonify({"message": f"Request {data['status']}"})
+    return jsonify({"error": "Invalid status"}), 400
+
+@main_bp.route('/connect_requests_sent/<int:user_id>', methods=["GET"])
+def get_sent_connect_requests(user_id):
+    # Pending requests sent by this user
+    requests = Relationship.query.filter_by(from_user_id=user_id, status='pending').all()
+    results = []
+    for rel in requests:
+        to_user = User.query.get(rel.to_user_id)
+        if to_user:
+            results.append({
+                "request_id": rel.id,
+                "to_user_id": to_user.id,
+                "to_name": to_user.name,
+                "relationship": rel.relationship_type
+            })
+    return jsonify(results)

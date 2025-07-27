@@ -1,162 +1,162 @@
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import Register from './Register';
+import Login from './Login';
+import Profile from './Profile';
+import Requests from './Requests';
+import MyRelationships from './MyRelationships';
+import './App.css';
 
-function App() {
-  const [users, setUsers] = useState([]);
-  const [registerData, setRegisterData] = useState({ name: '', email: '', password: '', profile_pic: '' });
-  const [loginData, setLoginData] = useState({ email: '', password: '' });
-  const [loginMessage, setLoginMessage] = useState('');
-  const [currentUserEmail, setCurrentUserEmail] = useState(localStorage.getItem("loggedInEmail"));
-  const [currentUserId, setCurrentUserId] = useState(null);
+function Menu({ loggedIn, onLogout }) {
+  return (
+    <nav className="top-menu">
+      <div className="menu-left">👨‍👩‍👧‍👦 Family App</div>
+      <div className="menu-right">
+        {!loggedIn ? (
+          <>
+            <Link to="/register" className="menu-link">Register</Link>
+            <Link to="/login" className="menu-link">Login</Link>
+          </>
+        ) : (
+          <>
+            <Link to="/profile" className="menu-link">Profile</Link>
+            <Link to="/find" className="menu-link">Find People</Link>
+            <Link to="/requests" className="menu-link">Requests</Link>
+            <Link to="/relationships" className="menu-link">My Relationships</Link>
+            <button className="menu-link logout-btn" onClick={onLogout}>Logout</button>
+          </>
+        )}
+      </div>
+    </nav>
+  );
+}
+
+function FindPeople() {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [relationship, setRelationship] = useState('');
+  const [message, setMessage] = useState('');
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:5000/users")
-      .then(res => res.json())
-      .then(data => {
-        setUsers(data);
-        if (currentUserEmail) {
-          const foundUser = data.find(u => u.email === currentUserEmail);
-          if (foundUser) setCurrentUserId(foundUser.id);
-        }
-      });
-  }, [currentUserEmail]);
+    const email = localStorage.getItem('loggedInEmail');
+    if (email) {
+      fetch('http://127.0.0.1:5000/users')
+        .then(res => res.json())
+        .then(users => {
+          const user = users.find(u => u.email === email);
+          setCurrentUser(user);
+        });
+    }
+  }, []);
 
-  const handleRegister = async (e) => {
+  const handleSearch = async e => {
     e.preventDefault();
-    const res = await fetch("http://127.0.0.1:5000/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(registerData),
-    });
-    const data = await res.json();
-    alert(data.message || data.error);
+    setMessage('');
+    setResults([]);
+    if (!query) return;
+    const res = await fetch('http://127.0.0.1:5000/users');
+    const users = await res.json();
+    const found = users.filter(u => u.email === query || (u.phone && u.phone === query));
+    setResults(found);
+    if (found.length === 0) setMessage('No user found.');
   };
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    const res = await fetch("http://127.0.0.1:5000/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(loginData),
+  const handleConnect = async (toUserId) => {
+    if (!relationship) {
+      setMessage('Please select a relationship type.');
+      return;
+    }
+    const res = await fetch('http://127.0.0.1:5000/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from_user_id: currentUser.id,
+        to_user_id: toUserId,
+        relationship_type: relationship
+      })
     });
     const data = await res.json();
-
     if (res.ok) {
-      setLoginMessage(data.message);
-      localStorage.setItem("loggedInEmail", loginData.email);
-      setCurrentUserEmail(loginData.email);
+      setMessage('Connection request sent! The user must accept your request.');
     } else {
-      setLoginMessage(data.error);
+      setMessage(data.error || 'Failed to send request.');
     }
   };
 
-  const handleProfileUpdate = async (e) => {
-    e.preventDefault();
-    const res = await fetch(`http://127.0.0.1:5000/update_profile/${currentUserId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: registerData.name,
-        profile_pic: registerData.profile_pic || ''
-      }),
-    });
-    const data = await res.json();
-    alert(data.message || data.error);
-  };
-
   return (
-    <div style={{ padding: "2rem", fontFamily: "sans-serif" }}>
-      <h1>👨‍👩‍👧‍👦 Family App</h1>
-
-      {currentUserEmail && (
-        <>
-          <p>✅ Logged in as: {currentUserEmail}</p>
-          <button onClick={() => {
-            localStorage.removeItem("loggedInEmail");
-            setCurrentUserEmail(null);
-            setCurrentUserId(null);
-            setLoginMessage('');
-          }}>
-            Logout
-          </button>
-        </>
-      )}
-
-      {!currentUserEmail && (
-        <>
-          <h2>🔐 Register</h2>
-          <form onSubmit={handleRegister}>
-            <input
-              type="text"
-              placeholder="Name"
-              value={registerData.name}
-              onChange={e => setRegisterData({ ...registerData, name: e.target.value })}
-            />
-            <input
-              type="email"
-              placeholder="Email"
-              value={registerData.email}
-              onChange={e => setRegisterData({ ...registerData, email: e.target.value })}
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={registerData.password}
-              onChange={e => setRegisterData({ ...registerData, password: e.target.value })}
-            />
-            <button type="submit">Register</button>
-          </form>
-
-          <h2>🔑 Login</h2>
-          <form onSubmit={handleLogin}>
-            <input
-              type="email"
-              placeholder="Email"
-              value={loginData.email}
-              onChange={e => setLoginData({ ...loginData, email: e.target.value })}
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={loginData.password}
-              onChange={e => setLoginData({ ...loginData, password: e.target.value })}
-            />
-            <button type="submit">Login</button>
-          </form>
-          <p>{loginMessage}</p>
-        </>
-      )}
-
-      {currentUserId && (
-        <div style={{ marginTop: "2rem" }}>
-          <h2>📝 Edit Profile</h2>
-          <form onSubmit={handleProfileUpdate}>
-            <input
-              type="text"
-              placeholder="New Name"
-              value={registerData.name}
-              onChange={e => setRegisterData({ ...registerData, name: e.target.value })}
-            />
-            <input
-              type="text"
-              placeholder="Profile Picture URL (optional)"
-              value={registerData.profile_pic || ''}
-              onChange={e => setRegisterData({ ...registerData, profile_pic: e.target.value })}
-            />
-            <button type="submit">Update Profile</button>
-          </form>
+    <div className="auth-form">
+      <h2>Find People</h2>
+      <form onSubmit={handleSearch} style={{marginBottom: '1.2rem'}}>
+        <input
+          type="text"
+          placeholder="Search by email or phone number"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
+        <button type="submit">Search</button>
+      </form>
+      {results.length > 0 && (
+        <div style={{width: '100%'}}>
+          <h3>Results:</h3>
+          {results.map(user => (
+            <div key={user.id} style={{marginBottom: '1.2rem', borderBottom: '1px solid #eee', paddingBottom: '1rem'}}>
+              <div><b>{user.name}</b> ({user.email})</div>
+              <div style={{marginTop: '0.5rem'}}>
+                <input
+                  type="text"
+                  placeholder="Relationship (e.g. friend, cousin)"
+                  value={relationship}
+                  onChange={e => setRelationship(e.target.value)}
+                  style={{marginRight: '0.7rem'}}
+                />
+                <button onClick={() => handleConnect(user.id)} type="button">Connect</button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
-
-      <h2>👥 All Users</h2>
-      <ul>
-        {users.map(user => (
-          <li key={user.id}>
-            <strong>{user.name}</strong> (ID: {user.id}) — {user.email}
-          </li>
-        ))}
-      </ul>
+      {message && <div className="form-message">{message}</div>}
     </div>
   );
 }
 
-export default App;
+function App() {
+  const [loggedIn, setLoggedIn] = useState(!!localStorage.getItem('loggedInEmail'));
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setLoggedIn(!!localStorage.getItem('loggedInEmail'));
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('loggedInEmail');
+    setLoggedIn(false);
+    navigate('/login');
+  };
+
+  return (
+    <div className="app-bg">
+      <Menu loggedIn={loggedIn} onLogout={handleLogout} />
+      <div className="app-container">
+        <Routes>
+          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login onLogin={() => { setLoggedIn(true); navigate('/profile'); }} />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/find" element={<FindPeople />} />
+          <Route path="/requests" element={<Requests />} />
+          <Route path="/relationships" element={<MyRelationships />} />
+          <Route path="/" element={<Login onLogin={() => { setLoggedIn(true); navigate('/profile'); }} />} />
+        </Routes>
+      </div>
+    </div>
+  );
+}
+
+export default function AppWithRouter() {
+  return (
+    <Router>
+      <App />
+    </Router>
+  );
+}
