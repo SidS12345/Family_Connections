@@ -1,4 +1,4 @@
-#!/Users/sid/Linkedin_Family/family_backend/venv/bin/python
+#!/Users/sumits/workspace/training/personal/Family_Connections/family_backend/venv/bin/python3.13
 # -*- coding: utf-8 -*-
 import re
 import sys
