@@ -125,12 +125,14 @@ function RelationshipCard({ relationship, onViewProfile, onEditRelationship }) {
   const [isEditing, setIsEditing] = useState(false);
   const [newRelationshipType, setNewRelationshipType] = useState('');
 
-  const handleEdit = () => {
+  const handleEdit = (e) => {
+    e.stopPropagation(); // Prevent triggering view profile
     setNewRelationshipType(relationship.my_relationship_type);
     setIsEditing(true);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = (e) => {
+    e.stopPropagation();
     if (!newRelationshipType.trim()) {
       alert('Please enter a relationship type');
       return;
@@ -139,86 +141,89 @@ function RelationshipCard({ relationship, onViewProfile, onEditRelationship }) {
     setIsEditing(false);
   };
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = (e) => {
+    e.stopPropagation();
     setIsEditing(false);
     setNewRelationshipType('');
   };
 
+  // Make the whole card clickable to view profile
   return (
-    <div className="user-card relationship-card">
-      <div className="relationship-details">
-        <div className="relationship-header">
+    <div
+      className="user-card relationship-card"
+      style={{ cursor: 'pointer' }}
+      onClick={() => !isEditing && onViewProfile(relationship.relative_id)}
+      tabIndex={0}
+      onKeyDown={e => {
+        if (!isEditing && (e.key === 'Enter' || e.key === ' ')) onViewProfile(relationship.relative_id);
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+        <img
+          src={relationship.profile_pic || 'https://randomuser.me/api/portraits/lego/1.jpg'}
+          alt="Profile"
+          className="profile-pic"
+          style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', border: '2px solid #667eea' }}
+        />
+        <div className="relationship-details" style={{ flex: 1 }}>
+          <div className="relationship-header" style={{ textAlign: 'left', marginBottom: 0 }}>
+            <span className="profile-link" style={{ cursor: 'inherit', fontWeight: 600, fontSize: '1.1rem', textAlign: 'left', display: 'block', marginBottom: 0 }}>
+              {relationship.name}
+            </span>
+          </div>
+          {/* Only show 'Your x' (my_relationship_type) */}
+          {!isEditing ? (
+            <div className="relationship-types" style={{ textAlign: 'left', marginTop: 0 }}>
+              <span className="my-relationship" style={{ display: 'block', marginTop: 0 }}>
+                Your <strong>{relationship.my_relationship_type}</strong>
+              </span>
+            </div>
+          ) : (
+            <div className="edit-relationship-form">
+              <div className="form-group">
+                <label className="form-label">Edit your relationship to {relationship.name}:</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={newRelationshipType}
+                  onChange={(e) => setNewRelationshipType(e.target.value)}
+                  placeholder="e.g., friend, brother, cousin"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+        {/* Show edit button only if not editing */}
+        {!isEditing && (
           <button
-            className="profile-link"
-            onClick={() => onViewProfile(relationship.relative_id)}
-            title="View profile"
+            className="btn-secondary edit-relationship-btn"
+            style={{ marginLeft: '1rem' }}
+            onClick={handleEdit}
+            tabIndex={-1}
           >
-            {relationship.name}
+            ✏️
+          </button>
+        )}
+      </div>
+      {/* Editing actions */}
+      {isEditing && (
+        <div className="relationship-actions" style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+          <button
+            className="btn-primary"
+            onClick={handleSaveEdit}
+            style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+          >
+            💾 Save
+          </button>
+          <button
+            className="btn-secondary"
+            onClick={handleCancelEdit}
+            style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+          >
+            ❌ Cancel
           </button>
         </div>
-
-        {!isEditing ? (
-          <div className="relationship-types">
-            <div className="relationship-bidirectional">
-              <span className="my-relationship">
-                You call them: <strong>{relationship.my_relationship_type}</strong>
-              </span>
-              <span className="their-relationship">
-                They call you: <strong>{relationship.their_relationship_type}</strong>
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="edit-relationship-form">
-            <div className="form-group">
-              <label className="form-label">Edit your relationship to {relationship.name}:</label>
-              <input
-                type="text"
-                className="form-input"
-                value={newRelationshipType}
-                onChange={(e) => setNewRelationshipType(e.target.value)}
-                placeholder="e.g., friend, brother, cousin"
-              />
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="relationship-actions">
-        {!isEditing ? (
-          <>
-            <button
-              className="btn-secondary view-profile-btn"
-              onClick={() => onViewProfile(relationship.relative_id)}
-            >
-              👤 View Profile
-            </button>
-            <button
-              className="btn-secondary edit-relationship-btn"
-              onClick={handleEdit}
-            >
-              ✏️ Edit
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              className="btn-primary"
-              onClick={handleSaveEdit}
-              style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-            >
-              💾 Save
-            </button>
-            <button
-              className="btn-secondary"
-              onClick={handleCancelEdit}
-              style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-            >
-              ❌ Cancel
-            </button>
-          </>
-        )}
-      </div>
+      )}
     </div>
   );
 }

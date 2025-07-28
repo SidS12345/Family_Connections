@@ -43,15 +43,16 @@ def get_all_users():
         "id": u.id,
         "name": u.name,
         "email": u.email,
-        "profile_pic": u.profile_pic,
-        "phone": u.phone,
-        "job": u.job,
-        "bio": u.bio,
-        "location": u.location,
-        "phone_private": u.phone_private,
-        "job_private": u.job_private,
-        "bio_private": u.bio_private,
-        "location_private": u.location_private
+        # The following fields are available but commented out for now:
+        # "profile_pic": u.profile_pic,
+        # "phone": u.phone,
+        # "job": u.job,
+        # "bio": u.bio,
+        # "location": u.location,
+        # "phone_private": u.phone_private,
+        # "job_private": u.job_private,
+        # "bio_private": u.bio_private,
+        # "location_private": u.location_private
     } for u in users])
 
 @main_bp.route('/connect', methods=['POST'])
@@ -348,58 +349,70 @@ def get_sent_connect_requests(user_id):
 @main_bp.route('/profile/<int:user_id>', methods=["GET"])
 def get_user_profile(user_id):
     """Get a user's profile, respecting privacy settings"""
-    target_user = User.query.get(user_id)
-    if not target_user:
-        return jsonify({"error": "User not found"}), 404
+    try:
+        target_user = User.query.get(user_id)
+        if not target_user:
+            return jsonify({"error": "User not found"}), 404
 
-    # Get the requesting user's ID from query parameter
-    requesting_user_id = request.args.get('requesting_user_id', type=int)
+        # Get the requesting user's ID from query parameter
+        requesting_user_id = request.args.get('requesting_user_id', type=int)
+        if requesting_user_id is None:
+            return jsonify({"error": "Missing or invalid requesting_user_id"}), 400
 
-    # Check if users are connected (if not the same user)
-    is_connected = False
-    is_own_profile = requesting_user_id == user_id
+        # Check if users are connected (if not the same user)
+        is_connected = False
+        is_own_profile = requesting_user_id == user_id
 
-    if requesting_user_id and not is_own_profile:
-        # Check if there's an approved relationship between the users
-        relationship = Relationship.query.filter(
-            ((Relationship.from_user_id == requesting_user_id) & (Relationship.to_user_id == user_id)) |
-            ((Relationship.from_user_id == user_id) & (Relationship.to_user_id == requesting_user_id))
-        ).filter(Relationship.status == 'approved').first()
+        if requesting_user_id and not is_own_profile:
+            # Check if there's an approved relationship between the users (bidirectional only)
+            relationship = Relationship.query.filter(
+                (((Relationship.from_user_id == requesting_user_id) & (Relationship.to_user_id == user_id)) |
+                 ((Relationship.from_user_id == user_id) & (Relationship.to_user_id == requesting_user_id))) &
+                (Relationship.status == 'approved') &
+                (Relationship.is_bidirectional == True)
+            ).first()
+            is_connected = relationship is not None
 
-        is_connected = relationship is not None
+        # Build response based on privacy settings and connection status
+        profile_data = {
+            "id": target_user.id,
+            "name": target_user.name,
+            "email": target_user.email if (is_own_profile or is_connected) else None,
+            "profile_pic": target_user.profile_pic
+        }
 
-    # Build response based on privacy settings and connection status
-    profile_data = {
-        "id": target_user.id,
-        "name": target_user.name,
-        "email": target_user.email if (is_own_profile or is_connected) else None,
-        "profile_pic": target_user.profile_pic
-    }
+        # Add fields based on privacy settings
+        if is_own_profile:
+            # Own profile - show everything including privacy settings
+            profile_data.update({
+                "phone": target_user.phone,
+                "job": target_user.job,
+                "bio": target_user.bio,
+                "location": target_user.location,
+                "phone_private": target_user.phone_private,
+                "job_private": target_user.job_private,
+                "bio_private": target_user.bio_private,
+                "location_private": target_user.location_private,
+                "is_own_profile": True,
+                "is_connected": True
+            })
+        else:
+            # Other user's profile - show all fields to connections, respect privacy for non-connections
+            profile_data.update({
+                "phone": target_user.phone if is_connected or not target_user.phone_private else None,
+                "job": target_user.job if is_connected or not target_user.job_private else None,
+                "bio": target_user.bio if is_connected or not target_user.bio_private else None,
+                "location": target_user.location if is_connected or not target_user.location_private else None,
+                "phone_private": target_user.phone_private,
+                "job_private": target_user.job_private,
+                "bio_private": target_user.bio_private,
+                "location_private": target_user.location_private,
+                "is_own_profile": False,
+                "is_connected": is_connected
+            })
 
-    # Add fields based on privacy settings
-    if is_own_profile:
-        # Own profile - show everything including privacy settings
-        profile_data.update({
-            "phone": target_user.phone,
-            "job": target_user.job,
-            "bio": target_user.bio,
-            "location": target_user.location,
-            "phone_private": target_user.phone_private,
-            "job_private": target_user.job_private,
-            "bio_private": target_user.bio_private,
-            "location_private": target_user.location_private,
-            "is_own_profile": True,
-            "is_connected": True
-        })
-    else:
-        # Other user's profile - respect privacy settings
-        profile_data.update({
-            "phone": target_user.phone if not target_user.phone_private and is_connected else None,
-            "job": target_user.job if not target_user.job_private and is_connected else None,
-            "bio": target_user.bio if not target_user.bio_private and is_connected else None,
-            "location": target_user.location if not target_user.location_private and is_connected else None,
-            "is_own_profile": False,
-            "is_connected": is_connected
-        })
-
-    return jsonify(profile_data)
+        return jsonify(profile_data)
+    except Exception as e:
+        import traceback
+        print(f"Error in get_user_profile: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
