@@ -199,7 +199,7 @@ function FindPeople() {
 
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
                 <div style={{ flex: 1 }}>
-                  <label className="form-label">What is {user.name} to you?</label>
+                  <label className="form-label">Relationship</label>
                   <input
                     type="text"
                     className="form-input"
