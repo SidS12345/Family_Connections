@@ -3,7 +3,7 @@ import './AuthForm.css';
 import { useNavigate, Link } from 'react-router-dom';
 
 function Register() {
-  const [form, setForm] = useState({ name: '', email: '', password: '', profile_pic: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', profile_pic: '', gender: '' });
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -80,6 +80,21 @@ function Register() {
             required
             disabled={loading}
           />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Gender</label>
+          <select
+            name="gender"
+            value={form.gender}
+            onChange={handleChange}
+            required
+            disabled={loading}
+          >
+            <option value="">Select gender...</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
         </div>
 
         <div className="form-group">

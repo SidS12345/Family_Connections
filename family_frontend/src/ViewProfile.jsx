@@ -18,6 +18,14 @@ function ViewProfile() {
           const response = await fetch("http://127.0.0.1:5000/users");
           const users = await response.json();
           const user = users.find(u => u.email === email);
+          
+          // Check for updated profile picture in localStorage
+          if (user) {
+            const storedProfilePic = localStorage.getItem(`profile_pic_${user.email}`);
+            if (storedProfilePic) {
+              user.profile_pic = storedProfilePic;
+            }
+          }
           setCurrentUser(user);
         } catch (error) {
           console.error('Error fetching current user:', error);

@@ -2,6 +2,39 @@ from flask import Blueprint, request, jsonify
 from models import db, Relationship, User, RelationshipEditRequest, Message
 from sqlalchemy import or_, and_
 
+def get_reverse_relationship(original_relationship, sender_gender, receiver_gender):
+    """
+    Determine the reverse relationship based on the original relationship and genders.
+    Returns the suggested relationship from receiver to sender.
+    
+    Example: If sender says receiver is their "Son", 
+    then receiver should call sender their "Father" or "Mother" (based on sender's gender)
+    """
+    relationship = original_relationship.lower()
+    
+    # Family relationships mapping
+    if relationship == 'father':
+        # If they say you're their father, you call them son/daughter (based on THEIR gender)
+        return 'Daughter' if sender_gender == 'female' else 'Son'
+    elif relationship == 'mother':
+        # If they say you're their mother, you call them son/daughter (based on THEIR gender)
+        return 'Daughter' if sender_gender == 'female' else 'Son'
+    elif relationship == 'son':
+        # If they say you're their son, you call them father/mother (based on THEIR gender)
+        return 'Mother' if sender_gender == 'female' else 'Father'
+    elif relationship == 'daughter':
+        # If they say you're their daughter, you call them father/mother (based on THEIR gender)
+        return 'Mother' if sender_gender == 'female' else 'Father'
+    elif relationship == 'brother':
+        # If they say you're their brother, you call them brother/sister (based on THEIR gender)
+        return 'Sister' if sender_gender == 'female' else 'Brother'
+    elif relationship == 'sister':
+        # If they say you're their sister, you call them brother/sister (based on THEIR gender)
+        return 'Sister' if sender_gender == 'female' else 'Brother'
+    
+    # For custom relationships, we can't determine the reverse automatically
+    return None
+
 def build_tree(user_id, visited=None):
     if visited is None:
         visited = set()
@@ -213,7 +246,7 @@ def delete_user(user_id):
 
 @main_bp.route('/relationship_requests/<int:user_id>', methods=["GET"])
 def get_relationship_requests(user_id):
-    # Requests where the user is the recipient and status is pending
+    # Pending requests TO this user
     requests = Relationship.query.filter_by(to_user_id=user_id, status='pending').all()
     results = []
     for rel in requests:
@@ -223,6 +256,7 @@ def get_relationship_requests(user_id):
                 "request_id": rel.id,
                 "from_user_id": from_user.id,
                 "from_name": from_user.name,
+                "from_profile_pic": from_user.profile_pic,
                 "relationship": rel.relationship_type
             })
     return jsonify(results)

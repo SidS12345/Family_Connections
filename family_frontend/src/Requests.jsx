@@ -6,7 +6,21 @@ function Requests() {
   const [editRequests, setEditRequests] = useState([]);
   const [message, setMessage] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+  const [reverseRelationships, setReverseRelationships] = useState({});
   const email = localStorage.getItem('loggedInEmail');
+
+  const relationshipOptions = [
+    { value: '', label: 'Select relationship...' },
+    { value: 'Father', label: 'Father' },
+    { value: 'Mother', label: 'Mother' },
+    { value: 'Brother', label: 'Brother' },
+    { value: 'Sister', label: 'Sister' },
+    { value: 'Son', label: 'Son' },
+    { value: 'Daughter', label: 'Daughter' },
+    { value: 'Husband', label: 'Husband' },
+    { value: 'Wife', label: 'Wife' },
+    { value: 'Other', label: 'Other' }
+  ];
 
   const fetchAllRequests = async () => {
     if (!email) return;
@@ -139,6 +153,19 @@ function ConnectionRequestCard({ request, onRespond }) {
   const [reverseRelationshipType, setReverseRelationshipType] = useState('');
   const [showApprovalForm, setShowApprovalForm] = useState(false);
 
+  const relationshipOptions = [
+    { value: '', label: 'Select relationship...' },
+    { value: 'Father', label: 'Father' },
+    { value: 'Mother', label: 'Mother' },
+    { value: 'Brother', label: 'Brother' },
+    { value: 'Sister', label: 'Sister' },
+    { value: 'Son', label: 'Son' },
+    { value: 'Daughter', label: 'Daughter' },
+    { value: 'Husband', label: 'Husband' },
+    { value: 'Wife', label: 'Wife' },
+    { value: 'Other', label: 'Other' }
+  ];
+
   const handleApproveClick = () => {
     setShowApprovalForm(true);
   };
@@ -173,13 +200,17 @@ function ConnectionRequestCard({ request, onRespond }) {
         <div className="approval-form">
           <div className="form-group">
             <label className="form-label">What is {request.from_name} to you?</label>
-            <input
-              type="text"
+            <select
               className="form-input"
-              placeholder="e.g., friend, brother, cousin"
               value={reverseRelationshipType}
               onChange={(e) => setReverseRelationshipType(e.target.value)}
-            />
+            >
+              {relationshipOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div style={{ display: 'flex', gap: '1rem' }}>
             <button onClick={handleConfirmApproval} className="btn-primary" style={{ flex: 1 }}>

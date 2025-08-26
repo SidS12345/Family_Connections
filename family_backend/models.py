@@ -9,6 +9,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
     profile_pic = db.Column(db.Text)  # Changed to Text to support large base64 images
+    gender = db.Column(db.String(10), nullable=True)  # 'male' or 'female'
 
     # New profile fields
     phone = db.Column(db.String(20))

@@ -154,8 +154,22 @@ function FindPeople() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [relationship, setRelationship] = useState('');
+  const [customRelationship, setCustomRelationship] = useState('');
   const [message, setMessage] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+
+  const relationshipOptions = [
+    { value: '', label: 'Select relationship...' },
+    { value: 'Father', label: 'Father' },
+    { value: 'Mother', label: 'Mother' },
+    { value: 'Brother', label: 'Brother' },
+    { value: 'Sister', label: 'Sister' },
+    { value: 'Son', label: 'Son' },
+    { value: 'Daughter', label: 'Daughter' },
+    { value: 'Husband', label: 'Husband' },
+    { value: 'Wife', label: 'Wife' },
+    { value: 'Other', label: 'Other' }
+  ];
 
   useEffect(() => {
     const email = localStorage.getItem('loggedInEmail');
@@ -182,22 +196,27 @@ function FindPeople() {
   };
 
   const handleConnect = async (toUserId) => {
-    if (!relationship) {
-      setMessage('Please select a relationship type.');
+    const selectedRelationship = relationship === 'Other' ? customRelationship.trim() : relationship;
+    
+    if (!selectedRelationship) {
+      setMessage(relationship === 'Other' ? 'Please enter a custom relationship type.' : 'Please select a relationship type.');
       return;
     }
+    
     const res = await fetch('http://127.0.0.1:5000/connect', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from_user_id: currentUser.id,
         to_user_id: toUserId,
-        relationship_type: relationship
+        relationship_type: selectedRelationship
       })
     });
     const data = await res.json();
     if (res.ok) {
       setMessage('Connection request sent! The user must accept your request.');
+      setRelationship('');
+      setCustomRelationship('');
     } else {
       setMessage(data.error || 'Failed to send request.');
     }
@@ -234,24 +253,48 @@ function FindPeople() {
               <div className="user-name">{user.name}</div>
               <div className="user-email">{user.email}</div>
 
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
-                <div style={{ flex: 1 }}>
-                  <label className="form-label">Relationship</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g., friend, cousin, sibling"
-                    value={relationship}
-                    onChange={e => setRelationship(e.target.value)}
-                  />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+                  <div style={{ flex: 1 }}>
+                    <label className="form-label">Relationship</label>
+                    <select
+                      className="form-input"
+                      value={relationship}
+                      onChange={e => {
+                        setRelationship(e.target.value);
+                        if (e.target.value !== 'Other') {
+                          setCustomRelationship('');
+                        }
+                      }}
+                    >
+                      {relationshipOptions.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    onClick={() => handleConnect(user.id)}
+                    className="btn-secondary"
+                    type="button"
+                  >
+                    Connect
+                  </button>
                 </div>
-                <button
-                  onClick={() => handleConnect(user.id)}
-                  className="btn-secondary"
-                  type="button"
-                >
-                  Connect
-                </button>
+                
+                {relationship === 'Other' && (
+                  <div>
+                    <label className="form-label">Custom Relationship</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Enter custom relationship (e.g., cousin, uncle, friend)"
+                      value={customRelationship}
+                      onChange={e => setCustomRelationship(e.target.value)}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           ))}

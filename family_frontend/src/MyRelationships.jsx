@@ -20,6 +20,12 @@ function MyRelationships() {
         const users = await usersRes.json();
         user = users.find(u => u.email === email);
         if (!user) return;
+        
+        // Check for updated profile picture in localStorage
+        const storedProfilePic = localStorage.getItem(`profile_pic_${user.email}`);
+        if (storedProfilePic) {
+          user.profile_pic = storedProfilePic;
+        }
         setCurrentUser(user);
     }
 

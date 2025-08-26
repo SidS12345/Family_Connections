@@ -20,6 +20,11 @@ function Profile() {
         const found = data.find(u => u.email === email);
         console.log('User data from backend:', found);
         if (found) {
+          // Check for updated profile picture in localStorage
+          const storedProfilePic = localStorage.getItem(`profile_pic_${found.email}`);
+          if (storedProfilePic) {
+            found.profile_pic = storedProfilePic;
+          }
           setUser(found);
           setFormData({
             name: found.name || '',
@@ -101,6 +106,8 @@ function Profile() {
           // Update user state first
           const updatedUser = {...user, profile_pic: base64Image};
           setUser(updatedUser);
+          // Store profile picture in localStorage for persistence across navigation
+          localStorage.setItem(`profile_pic_${user.email}`, base64Image);
           // Clear preview after user is updated so the saved image shows
           setPreviewUrl(null);
           setMessage('Profile picture updated successfully!');
