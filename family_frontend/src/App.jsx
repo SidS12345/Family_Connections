@@ -6,10 +6,13 @@ import Profile from './Profile';
 import ViewProfile from './ViewProfile';
 import Requests from './Requests';
 import MyRelationships from './MyRelationships';
+import Messages from './Messages';
+import Chat from './Chat';
 import './App.css';
 
 function Menu({ loggedIn, onLogout }) {
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [currentUser, setCurrentUser] = useState(null);
   const [debugInfo, setDebugInfo] = useState('');
 
@@ -54,19 +57,38 @@ function Menu({ loggedIn, onLogout }) {
     }
   };
 
+  const fetchUnreadMessages = async () => {
+    try {
+      if (!currentUser) return;
+
+      const res = await fetch(`http://127.0.0.1:5000/unread_message_count/${currentUser.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadMessageCount(data.unread_count);
+      }
+    } catch (error) {
+      console.error('Error fetching unread messages:', error);
+    }
+  };
+
   useEffect(() => {
     if (!loggedIn) {
       setPendingRequestsCount(0);
+      setUnreadMessageCount(0);
       setDebugInfo('Not logged in');
       return;
     }
 
     fetchPendingRequests();
-    const interval = setInterval(fetchPendingRequests, 30000);
+    const interval = setInterval(() => {
+      fetchPendingRequests();
+      fetchUnreadMessages();
+    }, 30000);
 
     // Listen for request updates
     const handleRequestUpdate = () => {
       fetchPendingRequests();
+      fetchUnreadMessages();
     };
 
     window.addEventListener('requestHandled', handleRequestUpdate);
@@ -76,6 +98,13 @@ function Menu({ loggedIn, onLogout }) {
       window.removeEventListener('requestHandled', handleRequestUpdate);
     };
   }, [loggedIn]);
+
+  // Fetch unread messages when currentUser is available
+  useEffect(() => {
+    if (currentUser && loggedIn) {
+      fetchUnreadMessages();
+    }
+  }, [currentUser, loggedIn]);
 
   return (
     <nav className="top-menu">
@@ -105,6 +134,14 @@ function Menu({ loggedIn, onLogout }) {
               </Link>
             </div>
             <Link to="/relationships" className="menu-link">My Relationships</Link>
+            <div className="menu-link-wrapper">
+              <Link to="/messages" className="menu-link">
+                Messages
+                {unreadMessageCount > 0 && (
+                  <span className="notification-badge">{unreadMessageCount}</span>
+                )}
+              </Link>
+            </div>
             <button className="menu-link logout-btn" onClick={onLogout}>Logout</button>
           </>
         )}
@@ -256,6 +293,8 @@ function App() {
           <Route path="/find" element={<FindPeople />} />
           <Route path="/requests" element={<Requests />} />
           <Route path="/relationships" element={<MyRelationships />} />
+          <Route path="/messages" element={<Messages />} />
+          <Route path="/chat/:userId" element={<Chat />} />
           <Route path="/" element={<Login onLogin={() => { setLoggedIn(true); navigate('/profile'); }} />} />
         </Routes>
       </div>

@@ -43,6 +43,13 @@ function Profile() {
     fetchUserData();
   }, [email]);
 
+  // Only fetch user data when exiting edit mode (not when profile pic is uploaded)
+  useEffect(() => {
+    if (!isEditing && !uploading) {
+      fetchUserData();
+    }
+  }, [isEditing]);
+
   const handleCameraClick = () => {
     document.getElementById('profile-pic-input').click();
   };
@@ -91,12 +98,14 @@ function Profile() {
         });
 
         if (response.ok) {
-          setUser({...user, profile_pic: base64Image});
+          // Update user state first
+          const updatedUser = {...user, profile_pic: base64Image};
+          setUser(updatedUser);
+          // Clear preview after user is updated so the saved image shows
+          setPreviewUrl(null);
           setMessage('Profile picture updated successfully!');
           setSelectedFile(null);
-          setPreviewUrl(null);
           setTimeout(() => setMessage(''), 3000);
-          setTimeout(() => fetchUserData(), 1000);
         } else {
           setMessage('Failed to update profile picture');
         }
