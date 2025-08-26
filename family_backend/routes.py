@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
-from models import db, Relationship, User, RelationshipEditRequest
+from models import db, Relationship, User, RelationshipEditRequest, Message
+from sqlalchemy import or_, and_
 
 def build_tree(user_id, visited=None):
     if visited is None:
@@ -416,3 +417,138 @@ def get_user_profile(user_id):
         import traceback
         print(f"Error in get_user_profile: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"error": "Internal server error", "details": str(e)}), 500
+
+# Messaging Routes
+@main_bp.route('/send_message', methods=["POST"])
+def send_message():
+    """Send a message to another user"""
+    data = request.json
+    if not all(key in data for key in ['sender_id', 'recipient_id', 'content']):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    sender_id = data['sender_id']
+    recipient_id = data['recipient_id']
+    content = data['content'].strip()
+
+    if not content:
+        return jsonify({"error": "Message content cannot be empty"}), 400
+
+    # Check if users are connected
+    relationship = Relationship.query.filter(
+        (((Relationship.from_user_id == sender_id) & (Relationship.to_user_id == recipient_id)) |
+         ((Relationship.from_user_id == recipient_id) & (Relationship.to_user_id == sender_id))) &
+        (Relationship.status == 'approved') &
+        (Relationship.is_bidirectional == True)
+    ).first()
+
+    if not relationship:
+        return jsonify({"error": "You can only message people you're connected with"}), 403
+
+    # Create the message
+    message = Message(
+        sender_id=sender_id,
+        recipient_id=recipient_id,
+        content=content
+    )
+    
+    db.session.add(message)
+    db.session.commit()
+
+    return jsonify({"message": "Message sent successfully!"})
+
+@main_bp.route('/conversations/<int:user_id>', methods=["GET"])
+def get_conversations(user_id):
+    """Get all conversations for a user"""
+    # Get all messages where user is sender or recipient
+    messages = Message.query.filter(
+        or_(Message.sender_id == user_id, Message.recipient_id == user_id)
+    ).order_by(Message.timestamp.desc()).all()
+
+    # Group by conversation partner
+    conversations = {}
+    for message in messages:
+        other_user_id = message.recipient_id if message.sender_id == user_id else message.sender_id
+        
+        if other_user_id not in conversations:
+            other_user = User.query.get(other_user_id)
+            conversations[other_user_id] = {
+                "user_id": other_user_id,
+                "user_name": other_user.name,
+                "profile_pic": other_user.profile_pic,
+                "last_message": message.content,
+                "last_message_time": message.timestamp.isoformat(),
+                "is_last_message_from_me": message.sender_id == user_id,
+                "unread_count": 0
+            }
+
+    # Count unread messages for each conversation
+    for conv_user_id in conversations:
+        unread_count = Message.query.filter(
+            and_(
+                Message.sender_id == conv_user_id,
+                Message.recipient_id == user_id,
+                Message.is_read == False
+            )
+        ).count()
+        conversations[conv_user_id]["unread_count"] = unread_count
+
+    return jsonify(list(conversations.values()))
+
+@main_bp.route('/messages/<int:user_id>/<int:other_user_id>', methods=["GET"])
+def get_messages(user_id, other_user_id):
+    """Get all messages between two users"""
+    # Mark messages from other user as read
+    Message.query.filter(
+        and_(
+            Message.sender_id == other_user_id,
+            Message.recipient_id == user_id,
+            Message.is_read == False
+        )
+    ).update({Message.is_read: True})
+    db.session.commit()
+
+    # Get all messages between the two users
+    messages = Message.query.filter(
+        or_(
+            and_(Message.sender_id == user_id, Message.recipient_id == other_user_id),
+            and_(Message.sender_id == other_user_id, Message.recipient_id == user_id)
+        )
+    ).order_by(Message.timestamp.asc()).all()
+
+    # Get the other user's info
+    other_user = User.query.get(other_user_id)
+    if not other_user:
+        return jsonify({"error": "User not found"}), 404
+
+    message_list = []
+    for message in messages:
+        message_list.append({
+            "id": message.id,
+            "sender_id": message.sender_id,
+            "recipient_id": message.recipient_id,
+            "content": message.content,
+            "timestamp": message.timestamp.isoformat(),
+            "is_read": message.is_read,
+            "is_from_me": message.sender_id == user_id
+        })
+
+    return jsonify({
+        "other_user": {
+            "id": other_user.id,
+            "name": other_user.name,
+            "profile_pic": other_user.profile_pic
+        },
+        "messages": message_list
+    })
+
+@main_bp.route('/unread_message_count/<int:user_id>', methods=["GET"])
+def get_unread_message_count(user_id):
+    """Get total unread message count for a user"""
+    count = Message.query.filter(
+        and_(
+            Message.recipient_id == user_id,
+            Message.is_read == False
+        )
+    ).count()
+    
+    return jsonify({"unread_count": count})
